@@ -78,11 +78,11 @@ class Response:		#Class defined for headers manipulation of response object ; To
 		self.response = self.response[:index] + str(stat) + " " + self.status[stat] + self.response[index:]
 		try:
 			file = open(f, "r")
+			entity = file.read()
+			file.close()
+			l = len(entity)
 		except:
 			print("The status file could not be opened")
-		entity = file.read()
-		file.close()
-		l = len(entity)
 		self.response += "Content-Length: " + str(l) + "\r\n"
 		self.response += "Content-type: text/html" + "\r\n\r\n"
 		self.response += entity
@@ -136,29 +136,28 @@ class server: #Creates server object ready to listen to a given number of client
 	def run(self, new_connection, recv_addr):
 		BUFF_SIZE = config.buffer_size
 		while True:
-			recv_message = new_connection.recv(BUFF_SIZE)
-			k = recv_message.split(b"\r\n\r\n", 1) #split the headers from the body
-			recv_decoded_message = k[0].decode()
-			if len(k) > 1:
-				body = k[1]
+			fragments = []
+			while True:
+				data = new_connection.recv(BUFF_SIZE)
+				fragments.append(data)
+				if len(data) < BUFF_SIZE:
+					break
+
+			recv_message = fragments[0].split(b'\r\n\r\n', 1)
+			recv_decoded_message = recv_message[0].decode()
+			if len(recv_message) > 1:
+				body = recv_message[1]
+			if len(fragments) > 1:
+				body1 = b"".join(fragments[1:])
+				body = body + body1
 			'''Processess the request and returns it in the form of dictionary; Key: header
 			Value: Value assigned to the header.'''
 			request, status = self.handle_request(recv_decoded_message) 
 			if not status: #If no problem with headers.
 				'''If the body is not fully received, the recv function is called repeatedly to accumulate
 				the fragments in a list and then joined together.'''
-				if request['version'] and request['method'] == "PUT" :
-					fragments = []
-					fragments.append(body)
-					while True:
-						data = new_connection.recv(BUFF_SIZE)
-						fragments.append(data)
-						if len(data) < BUFF_SIZE:
-							break
-
-					body = b"".join(fragments)
+				if request['version'] and request['method'] == "PUT":
 					self.put(request, body, new_connection)
-				
 				elif request['version'] and request['method'] == "TRACE":
 					self.trace(request, k[0], new_connection)
 				elif request['version'] and request['method'] == "GET":
@@ -252,16 +251,13 @@ class server: #Creates server object ready to listen to a given number of client
 		file_modified_date = os.path.getmtime(request['resource'])
 		file_modified_date = int(time.strftime("%s", time.localtime(file_modified_date)))#modified in seconds.
 		if os.access(request['resource'], os.R_OK):
-			print("1234 5678")
 			if "If-Modified-Since" in request.keys() and file_modified_date <= conditional_get:
-				print("No message")
 				response = message.handle_304(request)
 				response += "\r\n"
 				new_connection.send(response.encode())
 				return True
 
 			elif "If-Unmodified-Since" in request.keys() and file_modified_date >= conditional_get:
-				print("modified")
 				response = message.handle_412(request)
 				response += "\r\n"
 				new_connection.send(response.encode())
@@ -273,6 +269,10 @@ class server: #Creates server object ready to listen to a given number of client
 	def get(self, request, new_connection):
 		message = Response(request)#Creates a response object
 		print("GET " + request['resource'] + " HTTP/1.1" )
+		if not os.path.exists(request['resource']):
+			response = message.handle_4xx(request, 404)
+			new_connection.send(response.encode())
+			return 
 		if ("If-Modified-Since" or "If-Unmodified-Since") in request.keys(): #checks for conditional GET header
 			if "If-Modified-Since" in request.keys():
 				conditional_get = request['If-Modified-Since'][:-4]
@@ -282,10 +282,6 @@ class server: #Creates server object ready to listen to a given number of client
 				return 
 
 		#Checks file read permission
-		if not os.path.exists(request['resource']):
-			response = message.handle_4xx(request, 404)
-			new_connection.send(response.encode())
-			return 
 		if os.access(request['resource'], os.R_OK):
 			response = message.handle_200(request)
 			if not response:

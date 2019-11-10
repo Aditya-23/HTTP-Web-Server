@@ -85,11 +85,7 @@ post_string = '''<!DOCTYPE html>
 </html>'''
 '''The authorization password for PUT and DELETE methods'''
 auth_password = "Happy1"
-'''Configure the IP address assigned to your interface. Default : Localhost'''
-host = '127.0.0.1'
-'''Configure the port number for the server to listen. Note : Do NOT use port numbers from 0 to 1023'''
-port = 5672
-address = (host, port)
+
 '''Response status codes'''
 status_codes = {
 		200 : "Ok",
@@ -113,3 +109,8 @@ methods = ["GET", "POST", "HEAD", "PUT", "DELETE", "TRACE", "OPTIONS"]
 '''Size of bytes to be received'''
 buffer_size = 1024
 MAX_URI_LEN = 100
+'''Configure the IP address assigned to your interface. Default : Localhost'''
+host = '127.0.0.1'
+'''Configure the port number for the server to listen. Note : Do NOT use port numbers from 0 to 1023'''
+port = 5671
+address = (host, port)
