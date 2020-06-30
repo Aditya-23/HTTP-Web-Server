@@ -80,7 +80,7 @@ post_string = '''<!DOCTYPE html>
 	<title>form test</title>
 </head>
 <body>
-	<h1> Resource created! Check wr.txt</h1>
+	<h1> Resource created!</h1>
 </body>
 </html>'''
 '''The authorization password for PUT and DELETE methods'''
